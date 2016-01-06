@@ -34,11 +34,11 @@ class VaCareersJobScraper(object):
                 job['title'] = jdiv.cssselect('span.job-title')[0].text
                 job['location'] = jdiv.cssselect('span.job-location')[0].text
                 jobs.append(job)
-                break
 
             # next page
             self.params['pg'] += 1
             print 'page ', self.params['pg']
+            print '# jobs', len(jobs)
 
             x = './/ul[@class="paging-nav"]/a/li[text()="{}"]'
             x = x.format(self.params['pg'])
@@ -58,6 +58,8 @@ class VaCareersJobScraper(object):
         t = ' '.join(t.split())
 
         job['description'] = t
+
+        print json.dumps(job, indent=2)
 
     def scrape(self):
         print 'scraping...'
