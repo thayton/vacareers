@@ -8,4 +8,4 @@ http://www.vacareers.va.gov/careers/physicians/search-results.asp?search=search&
     $ pip install -r requirements.txt
 
 # Usage
-   $ ./scraper.py
+    $ ./scraper.py
