@@ -47,13 +47,13 @@ class VaCareersJobScraper(object):
             rdiv = tree.cssselect('div#search-results')[0]
 
             for jdiv in rdiv.cssselect('div.job'):
-                jdiv_sel_txt = lambda sel: jdiv.cssselect(sel)[0].text
+                jdiv_text = lambda sel: self.lxml_text(jdiv, sel)
                 jdiv_url = lambda: urlparse.urljoin(r.url, jdiv.find('a').get('href'))
 
                 job = {}
                 job['url'] = jdiv_url()
-                job['title'] = jdiv_sel_txt('span.job-title')
-                job['location'] = jdiv_sel_txt('span.job-location')
+                job['title'] = jdiv_text('span.job-title')
+                job['location'] = jdiv_text('span.job-location')
                 jobs.append(job)
 
             # next page
