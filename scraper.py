@@ -19,55 +19,63 @@ class VaCareersJobScraper(object):
             'q': '0602',
             'pg': 1
         }
+        self.session = requests.Session()
 
     def scrape_job_links(self):
         jobs = []
 
         while True:
-            r = requests.get(self.url, params=self.params)
-            t = lxml.html.fromstring(r.text)
-            d = t.cssselect('div#search-results')[0]
+            sys.stderr.write('scraping page %d\n' % self.params['pg'])
 
-            for jdiv in d.cssselect('div.job'):
+            r = self.session.get(self.url, params=self.params)
+            tree = lxml.html.fromstring(r.text)
+            rdiv = tree.cssselect('div#search-results')[0]
+
+            for jdiv in rdiv.cssselect('div.job'):
+                jdiv_sel_txt = lambda sel: jdiv.cssselect(sel)[0].text
+                jdiv_url = lambda: urlparse.urljoin(r.url, jdiv.find('a').get('href'))
+
                 job = {}
-                job['url'] = urlparse.urljoin(self.url, jdiv.find('a').get('href'))
-                job['title'] = jdiv.cssselect('span.job-title')[0].text
-                job['location'] = jdiv.cssselect('span.job-location')[0].text
+                job['url'] = jdiv_url()
+                job['title'] = jdiv_sel_txt('span.job-title')
+                job['location'] = jdiv_sel_txt('span.job-location')
                 jobs.append(job)
 
             # next page
             self.params['pg'] += 1
-            print 'page ', self.params['pg']
-            print '# jobs', len(jobs)
 
-            x = './/ul[@class="paging-nav"]/a/li[text()="{}"]'
-            x = x.format(self.params['pg'])
+            sys.stderr.write('# jobs %d\n' % len(jobs))
+
+            # If no page number link, then we're on the last page
+            xp = './/ul[@class="paging-nav"]/a/li[text()="{}"]'
+            xp = xp.format(self.params['pg'])
 
             try:
-                (n,) = t.xpath(x)
+                (n,) = tree.xpath(xp)
             except ValueError: # no more pages
                 break
 
         return jobs
 
     def scrape_job_description(self, job):
-        r = requests.get(job['url'])
-        t = lxml.html.fromstring(r.text)
-        d = t.cssselect('div.jb-content')
-        t = d[0].text_content()
-        t = ' '.join(t.split())
+        sys.stderr.write('scraping %s\n' % job['url'])
 
-        job['description'] = t
+        r = self.session.get(job['url'])
+        tree = lxml.html.fromstring(r.text)
 
-        print json.dumps(job, indent=2)
+        div = tree.cssselect('div.jb-content')
+        txt = div[0].text_content()
+        txt = ' '.join(txt.split())
+
+        job['description'] = txt
 
     def scrape(self):
-        print 'scraping...'
         jobs = self.scrape_job_links()
         for job in jobs:
             self.scrape_job_description(job)
 
-        print json.dumps(jobs, indent=2)
+        with open('vacareers.json', 'w') as fp:
+            json.dump(jobs, fp, indent=2)
 
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, sigint)
