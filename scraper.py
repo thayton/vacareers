@@ -7,6 +7,8 @@ import urlparse
 import requests
 import lxml.html
 
+from functools import partial
+
 def sigint(signal, frame):
     sys.stderr.write('Exiting...\n')
     sys.exit(0)    
@@ -25,12 +27,13 @@ class VaCareersJobScraper(object):
     def lxml_text(etree, CSSSelector):
         elem = etree.cssselect(CSSSelector)
         text = elem[0].text_content()
+        text = ' '.join(text.split())
         return text
 
     @staticmethod
     def lxml_html(etree, CSSSelector):
         elem = etree.cssselect(CSSSelector)
-        html = lxml.etree.tostring(elem[0], pretty_print=True)
+        html = lxml.etree.tostring(elem[0])
         return html
 
     def scrape_job_links(self):
@@ -75,46 +78,26 @@ class VaCareersJobScraper(object):
         r = self.session.get(job['url'])
         tree = lxml.html.fromstring(r.text)
 
-        # url:                window.location.href,
-        # title:              getContentSafe('div.jb-title'),
-        # location:           getContentSafe('div.jb-subtitle'),
-        # description:        getHtmlSafe('div.jb-content'),
-        # contactName:        getContentSafe('div.jd-sub-header > span > span.contact-item'),
-        # contactPhone:       getContentSafe('div.jd-sub-header > span > span > a > span.contact-item'),
-        # contactEmail:       getContentSafe('div.jd-sub-header > span > a > span.contact-item'),
-        # openDate:           getContentSafe('div.job-details div.left span.detail-detail:nth-of-type(1)'),
-        # closeDate:          getContentSafe('div.job-details div.left span.detail-detail:nth-of-type(2)'),
-        # company:            getContentSafe('div.job-details div.right span.detail-detail:nth-of-type(1)'),
-        # seekerRole:         getContentSafe('div.job-details div.right span.detail-detail:nth-of-type(2)'),
-        # type:               getContentSafe('div.job-details div.right span.detail-detail:nth-of-type(3)'),
-        # payrangeFrom:       getContentSafe('div.estimated-pay div.payrange-left'),
-        # payrangeTo:         getContentSafe('div.estimated-pay div.payrange-right'),
-        # aboutVa:            getHtmlSafe('.detail-accordions .jb-accordion li.accordion-item:nth-of-type(1) li.accordion-content'),
-        # qualifications:     getHtmlSafe('.detail-accordions .jb-accordion li.accordion-item:nth-of-type(2) li.accordion-content'),
-        # benefits:           getHtmlSafe('.detail-accordions .jb-accordion li.accordion-item:nth-of-type(3) li.accordion-content'),
-        # howToApply:         getHtmlSafe('.detail-accordions .jb-accordion li.accordion-item:nth-of-type(4) li.accordion-content'),
-        # additionalDetails:  getHtmlSafe('.detail-accordions .jb-accordion li.accordion-item:nth-of-type(5) li.accordion-content')
+        # Bind first argument to 'tree' for all the calls below
+        lxml_text = partial(self.lxml_text, tree)
+        lxml_html = partial(self.lxml_html, tree)
 
-        div = tree.cssselect('div.jb-content')
-        txt = div[0].text_content()
-        txt = ' '.join(txt.split())
-
-        job['description'] = txt
-        job['contactName'] =        self.lxml_text(tree, 'div.jd-sub-header > span > span.contact-item')
-        job['contactPhone'] =       self.lxml_text(tree, 'div.jd-sub-header > span > span > a > span.contact-item')
-        job['contactEmail'] =       self.lxml_text(tree, 'div.jd-sub-header > span > a > span.contact-item')
-        job['openDate'] =           self.lxml_text(tree, 'div.job-details div.left span.detail-detail:nth-of-type(1)')
-        job['closeDate'] =          self.lxml_text(tree, 'div.job-details div.left span.detail-detail:nth-of-type(2)')
-        job['company'] =            self.lxml_text(tree, 'div.job-details div.right span.detail-detail:nth-of-type(1)')
-        job['seekerRole'] =         self.lxml_text(tree, 'div.job-details div.right span.detail-detail:nth-of-type(2)')
-        job['type'] =               self.lxml_text(tree, 'div.job-details div.right span.detail-detail:nth-of-type(3)')
-        job['payrangeFrom'] =       self.lxml_text(tree, 'div.estimated-pay div.payrange-left')
-        job['payrangeTo'] =         self.lxml_text(tree, 'div.estimated-pay div.payrange-right')
-        job['aboutVa'] =            self.lxml_html(tree, '.detail-accordions .jb-accordion li.accordion-item:nth-of-type(1) li.accordion-content')
-        job['qualifications'] =     self.lxml_html(tree, '.detail-accordions .jb-accordion li.accordion-item:nth-of-type(2) li.accordion-content')
-        job['benefits'] =           self.lxml_html(tree, '.detail-accordions .jb-accordion li.accordion-item:nth-of-type(3) li.accordion-content')
-        job['howToApply'] =         self.lxml_html(tree, '.detail-accordions .jb-accordion li.accordion-item:nth-of-type(4) li.accordion-content')
-        job['additionalDetails'] =  self.lxml_html(tree, '.detail-accordions .jb-accordion li.accordion-item:nth-of-type(5) li.accordion-content')
+        job['description'] =        lxml_text('div.jb-content')
+        job['contactName'] =        lxml_text('div.jd-sub-header > span > span.contact-item')
+        job['contactPhone'] =       lxml_text('div.jd-sub-header > span > span > a > span.contact-item')
+        job['contactEmail'] =       lxml_text('div.jd-sub-header > span > a > span.contact-item')
+        job['openDate'] =           lxml_text('div.job-details div.left span.detail-detail:nth-of-type(1)')
+        job['closeDate'] =          lxml_text('div.job-details div.left span.detail-detail:nth-of-type(2)')
+        job['company'] =            lxml_text('div.job-details div.right span.detail-detail:nth-of-type(1)')
+        job['seekerRole'] =         lxml_text('div.job-details div.right span.detail-detail:nth-of-type(2)')
+        job['type'] =               lxml_text('div.job-details div.right span.detail-detail:nth-of-type(3)')
+        job['payrangeFrom'] =       lxml_text('div.estimated-pay div.payrange-left')
+        job['payrangeTo'] =         lxml_text('div.estimated-pay div.payrange-right')
+        job['aboutVa'] =            lxml_html('.detail-accordions .jb-accordion li.accordion-item:nth-of-type(1) li.accordion-content')
+        job['qualifications'] =     lxml_html('.detail-accordions .jb-accordion li.accordion-item:nth-of-type(2) li.accordion-content')
+        job['benefits'] =           lxml_html('.detail-accordions .jb-accordion li.accordion-item:nth-of-type(3) li.accordion-content')
+        job['howToApply'] =         lxml_html('.detail-accordions .jb-accordion li.accordion-item:nth-of-type(4) li.accordion-content')
+        job['additionalDetails'] =  lxml_html('.detail-accordions .jb-accordion li.accordion-item:nth-of-type(5) li.accordion-content')
 
     def scrape(self):
         jobs = self.scrape_job_links()
