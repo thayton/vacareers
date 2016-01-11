@@ -26,6 +26,9 @@ class VaCareersJobScraper(object):
     @staticmethod
     def lxml_text(etree, CSSSelector):
         elem = etree.cssselect(CSSSelector)
+        if len(elem) < 1:
+            return None
+
         text = elem[0].text_content()
         text = ' '.join(text.split())
         return text
@@ -33,6 +36,9 @@ class VaCareersJobScraper(object):
     @staticmethod
     def lxml_html(etree, CSSSelector):
         elem = etree.cssselect(CSSSelector)
+        if len(elem) < 1:
+            return None
+
         html = lxml.etree.tostring(elem[0])
         return html
 
